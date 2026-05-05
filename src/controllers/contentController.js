@@ -21,12 +21,11 @@ exports.getContent = asyncHandler(async (req, res) => {
         return res.status(200).json(new ApiResponse(200, { content: cached.data }));
     }
 
-    let content = await Content.findOne({ identifier }).populate('flashSale.products').lean();
+    let content = await Content.findOne({ identifier }).populate('flashSale.products');
 
     if (!content) {
         // Create default if not exists
-        const newContent = await Content.create({ identifier });
-        content = newContent.toObject();
+        content = await Content.create({ identifier });
     }
 
     // Set cache
