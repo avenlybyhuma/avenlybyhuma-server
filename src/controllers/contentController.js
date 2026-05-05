@@ -3,33 +3,14 @@ const asyncHandler = require('../utils/asyncHandler');
 const ApiResponse = require('../utils/apiResponse');
 const { uploadSingleImage, deleteImage } = require('../services/fileUploadService');
 
-// Simple in-memory cache
-const contentCache = new Map();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-/**
- * @desc    Get content by identifier
- * @route   GET /api/content/:identifier
- * @access  Public
- */
 exports.getContent = asyncHandler(async (req, res) => {
     const { identifier } = req.params;
-    
-    // Check cache
-    const cached = contentCache.get(identifier);
-    if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
-        return res.status(200).json(new ApiResponse(200, { content: cached.data }));
-    }
-
     let content = await Content.findOne({ identifier }).populate('flashSale.products');
 
     if (!content) {
         // Create default if not exists
         content = await Content.create({ identifier });
     }
-
-    // Set cache
-    contentCache.set(identifier, { data: content, timestamp: Date.now() });
 
     res.status(200).json(new ApiResponse(200, { content }));
 });
@@ -163,7 +144,6 @@ exports.updateContent = asyncHandler(async (req, res) => {
     }
 
     await content.save();
-    contentCache.delete(identifier); // Invalidate cache
 
     res.status(200).json(new ApiResponse(200, { content }, 'Content updated successfully'));
 });

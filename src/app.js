@@ -3,7 +3,6 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const errorHandler = require('./middleware/errorHandler');
 const ApiError = require('./utils/ApiError');
@@ -12,7 +11,6 @@ const app = express();
 
 // Set security HTTP headers
 app.use(helmet());
-app.use(compression());
 
 // Development logging
 if (process.env.NODE_ENV === 'development') {
