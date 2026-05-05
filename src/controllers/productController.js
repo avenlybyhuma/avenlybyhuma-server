@@ -65,20 +65,18 @@ exports.getAllProducts = asyncHandler(async (req, res, next) => {
     query = query.skip(skip).limit(limit);
 
     // Execute query
-    let products = await query.populate('category', 'name');
+    let products = await query.populate('category', 'name').lean();
     const total = await Product.countDocuments(JSON.parse(queryStr));
 
-    // --- Flash Sale Logic for Listings ---
-    const homeContent = await Content.findOne({ identifier: 'home_page' });
+    // --- Optimized Flash Sale Logic for Listings ---
+    const homeContent = await Content.findOne({ identifier: 'home_page' }).lean();
     if (homeContent && homeContent.flashSale && homeContent.flashSale.enabled) {
-        const featuredIds = homeContent.flashSale.products.map(id => id.toString());
+        const featuredIds = new Set(homeContent.flashSale.products.map(id => id.toString()));
         const saleDiscount = homeContent.flashSale.discount;
 
         products = products.map(p => {
-            if (featuredIds.includes(p._id.toString()) && (!p.discount || p.discount === 0)) {
-                const productObj = p.toObject();
-                productObj.discount = saleDiscount;
-                return productObj;
+            if (featuredIds.has(p._id.toString()) && (!p.discount || p.discount === 0)) {
+                return { ...p, discount: saleDiscount };
             }
             return p;
         });
@@ -113,23 +111,18 @@ exports.getProduct = asyncHandler(async (req, res, next) => {
         query = Product.findOne({ slug: id });
     }
 
-    const product = await query.populate('category', 'name');
+    const product = await query.populate('category', 'name').lean();
 
     if (!product) {
         return next(new ApiError(404, messages.PRODUCT_NOT_FOUND));
     }
 
     // --- Flash Sale Logic ---
-    // If there's an active flash sale and the product is part of it, 
-    // we set the discount to the sale percentage if the product has no individual discount.
-    const homeContent = await Content.findOne({ identifier: 'home_page' });
+    const homeContent = await Content.findOne({ identifier: 'home_page' }).lean();
     if (homeContent && homeContent.flashSale && homeContent.flashSale.enabled) {
         const isFeatured = homeContent.flashSale.products.some(id => id.toString() === product._id.toString());
         if (isFeatured && (!product.discount || product.discount === 0)) {
-            // We don't save this to DB, just return it in the response
-            const productObj = product.toObject();
-            productObj.discount = homeContent.flashSale.discount;
-            return res.status(200).json(new ApiResponse(200, { product: productObj }));
+            return res.status(200).json(new ApiResponse(200, { product: { ...product, discount: homeContent.flashSale.discount } }));
         }
     }
 

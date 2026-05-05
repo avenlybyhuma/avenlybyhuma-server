@@ -77,4 +77,6 @@ const contentSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
+contentSchema.index({ identifier: 1 });
+
 module.exports = mongoose.model('Content', contentSchema);
